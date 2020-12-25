@@ -23,7 +23,7 @@ jobs:
         arch=${{matrix.arch}}
         export GOOS=${arch%%_*} GOARCH=${arch##*_} GOARM=5
         export CGO_ENABLED=0
-        go build -o magcat.$arch -v --ldflags="-s" ./cmd
+        go build -o magcat.$arch -v --ldflags="-s" .
     - name: upload-artifact magcat
       uses: actions/upload-artifact@v1
       with:
