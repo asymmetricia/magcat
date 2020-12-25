@@ -10,3 +10,5 @@ To use:
 4. Edit `magcat.py` to update the URL (keep the `/raw` at the end!), save it and the contents of `lib/` as `code.py` to a UF2-using MagTag
 
 Questions/comments, open an issue.
+
+![MagCat](magcat.bmp)
