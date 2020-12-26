@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"log"
 	"net/http"
 	url2 "net/url"
@@ -19,48 +21,64 @@ import (
 	"golang.org/x/image/bmp"
 )
 
+func getCat(ctx context.Context, apiKey string) (img io.ReadCloser, err error) {
+	url := url2.URL{
+		Scheme: "https",
+		Host:   "api.thecatapi.com",
+		Path:   "v1/images/search",
+	}
+	url.Query().Add("mime_types", "jpg")
+	url.Query().Add("mime_types", "png")
+	catReq, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
+
+	var res *http.Response
+	if err == nil {
+		catReq.Header.Add("x-api-key", apiKey)
+		res, err = http.DefaultClient.Do(catReq)
+	}
+
+	if err == nil {
+		defer res.Body.Close()
+		if res.StatusCode/100 != 2 {
+			err = fmt.Errorf("non-2XX %d from the cat API", res.StatusCode)
+		}
+	}
+
+	var payload []struct {
+		Url string
+	}
+
+	if err == nil {
+		dec := json.NewDecoder(res.Body)
+		err = dec.Decode(&payload)
+	}
+
+	var cat *http.Response
+	if err == nil {
+		cat, err = http.Get(payload[0].Url)
+	}
+
+	if err == nil {
+		return cat.Body, nil
+	}
+
+	return nil, fmt.Errorf("retrieving cat: %w", err)
+}
+
 func proxyCat(apiKey string) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
-		url := url2.URL{
-			Scheme: "https",
-			Host:   "api.thecatapi.com",
-			Path:   "v1/images/search",
-		}
-		url.Query().Add("mime_types", "jpg")
-		url.Query().Add("mime_types", "png")
-		catReq, err := http.NewRequestWithContext(req.Context(), "GET", url.String(), nil)
-
-		var res *http.Response
-		if err == nil {
-			req.Header.Add("x-api-key", `38900902-895a-44b3-b1c7-94a3f81e9262`)
-			res, err = http.DefaultClient.Do(catReq)
-		}
-
-		if err == nil {
-			defer res.Body.Close()
-			if res.StatusCode/100 != 2 {
-				err = fmt.Errorf("non-2XX %d from the cat API", res.StatusCode)
-			}
-		}
-
-		var payload []struct {
-			Url string
-		}
-
-		if err == nil {
-			dec := json.NewDecoder(res.Body)
-			err = dec.Decode(&payload)
-		}
-
-		var cat *http.Response
-		if err == nil {
-			cat, err = http.Get(payload[0].Url)
-		}
-
 		var img image.Image
-		if err == nil {
-			defer cat.Body.Close()
-			img, _, err = image.Decode(cat.Body)
+		var err error
+		for try := 0; try < 5; try++ {
+			var cat io.ReadCloser
+			cat, err = getCat(req.Context(), apiKey)
+			if err == nil {
+				defer cat.Close()
+				img, _, err = image.Decode(cat)
+			}
+			if err == nil {
+				break
+			}
 		}
 
 		if err == nil {
