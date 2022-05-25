@@ -1,6 +1,10 @@
-copy:
+copy: lint
 	cp magcat.py /media/sda1/code.py
 	sync
+
+lint:
+	pip3 show pylint >/dev/null || pip3 install pylint
+	python3 -m pylint magcat.py
 
 libraries:
 	for library in adafruit_portalbase adafruit_magtag adafruit_bitmap_font adafruit_display_text; do \

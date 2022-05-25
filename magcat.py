@@ -1,10 +1,19 @@
-import adafruit_requests
-import array
+"""magcat delivers cat pictures every 15 minutes."""
+import time
 import displayio
 import terminalio
-import time
-import wifi
 from adafruit_magtag.magtag import MagTag
+
+def error(error_message):
+    """error displays an error message then sleeps for 30s before re-trying"""
+    magtag.peripherals.neopixels[0] = (PIXEL_BRIGHTNESS, 0, 0)
+    magtag.peripherals.neopixels[1] = (PIXEL_BRIGHTNESS, 0, 0)
+    magtag.peripherals.neopixels[2] = (PIXEL_BRIGHTNESS, 0, 0)
+    magtag.peripherals.neopixels[3] = (PIXEL_BRIGHTNESS, 0, 0)
+    magtag.set_text(f"Error:\n{error_message}\nBattery: {magtag.peripherals.battery}V")
+    time.sleep(magtag.graphics.display.time_to_refresh)
+    magtag.peripherals.neopixel_disable = True
+    magtag.exit_and_deep_sleep(30)
 
 PIXEL_BRIGHTNESS = 8
 
@@ -17,17 +26,24 @@ magtag.add_text(
 
 magtag.peripherals.neopixel_disable = False
 magtag.peripherals.neopixels[3] = (PIXEL_BRIGHTNESS, 0, 0)
-magtag.set_text(
-    "Connecting...\nBattery: {}V".format(magtag.peripherals.battery))
+magtag.set_text(f"Connecting...\nBattery: {magtag.peripherals.battery}V")
 
-magtag.network.connect()
+try:
+    magtag.network.connect()
+# pylint: disable=broad-except
+except BaseException as e:
+    error(f"Connection failed: {e}")
 
 magtag.peripherals.neopixels[3] = (0, PIXEL_BRIGHTNESS, 0)
 magtag.peripherals.neopixels[2] = (PIXEL_BRIGHTNESS, 0, 0)
-magtag.set_text(
-    "Retrieving cat...\nBattery: {}V".format(magtag.peripherals.battery))
+magtag.set_text(f"Retrieving cat...\nBattery: {magtag.peripherals.battery}V")
 
-res = magtag.network.requests.get('http://192.168.1.193:1337/raw')
+try:
+    res = magtag.network.requests.get('http://192.168.1.57:1337/raw')
+# pylint: disable=broad-except
+except BaseException as e:
+    error(f"Request failed: {e}")
+
 magtag.peripherals.neopixels[2] = (0, PIXEL_BRIGHTNESS, 0)
 magtag.peripherals.neopixels[1] = (PIXEL_BRIGHTNESS, 0, 0)
 
@@ -38,7 +54,7 @@ x = int.from_bytes(cat[0:2], 'big')
 y = int.from_bytes(cat[2:4], 'big')
 print('{} => {}'.format(cat[0:2], x))
 print('{} => {}'.format(cat[2:4], y))
-print('{} x {}'.format(x, y))
+print(f'{x} x {y}')
 
 # Four one-byte grey values
 palette = displayio.Palette(4)
@@ -62,7 +78,8 @@ group.append(sprite)
 # Initialize bitmap to white
 bitmap.fill(3)
 
-# x * y bytes of image data, each byte is an index into the above palette (just like displayio wants)
+# x * y bytes of image data, each byte is an index into the above palette (just
+# like displayio wants)
 margin_x = int((296 - x) / 2)
 margin_y = int((128 - y) / 2)
 for py in range(0, y):
@@ -79,6 +96,7 @@ magtag.graphics.display.show(group)
 while True:
     try:
         magtag.graphics.display.refresh()
+    # pylint: disable=bare-except
     except:
         time.sleep(0.1)
         continue
