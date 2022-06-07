@@ -105,4 +105,4 @@ while True:
 magtag.peripherals.neopixels[0] = (0, PIXEL_BRIGHTNESS, 0)
 time.sleep(magtag.graphics.display.time_to_refresh)
 magtag.peripherals.neopixel_disable = True
-magtag.exit_and_deep_sleep(900)
+magtag.exit_and_deep_sleep(1800)
