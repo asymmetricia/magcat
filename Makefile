@@ -3,7 +3,9 @@ copy: lint
 	sync
 
 lint:
-	pip3 show pylint >/dev/null || pip3 install pylint
+	python3 -m venv venv; \
+	. venv/bin/activate; \
+	pip3 show pylint >/dev/null || pip3 install pylint; \
 	python3 -m pylint magcat.py
 
 libraries:
